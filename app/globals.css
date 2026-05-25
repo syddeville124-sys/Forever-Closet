@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f7f3ec;
+  --paper: #fffdf8;
+  --ink: #2f2a25;
+  --muted: #6f6257;
+  --line: #d8cbbd;
+  --accent: #6f4f3f;
+  --accent-soft: #eaded3;
+  --sage: #79806c;
+  --rose: #a9796d;
+  --gold: #b08b57;
+  --background: var(--bg);
+  --foreground: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.55;
+}
