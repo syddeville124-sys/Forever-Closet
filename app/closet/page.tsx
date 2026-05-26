@@ -19,9 +19,16 @@ const BADGE_OPTIONS = [
   { label: "Release",    color: "#a9796d",       value: "release" },
 ];
 
-function getBadgeForValue(value: string) {
-  return BADGE_OPTIONS.find((b) => b.value === value) ?? BADGE_OPTIONS[0];
-}
+type AiSuggestion = {
+  name: string;
+  category: string;
+  color: string;
+  fabric: string;
+  silhouette: string;
+  tags: string[];
+  eraInfluence: string;
+  garmentType: string;
+};
 
 function calcHealthScore(closet: ClosetItem[]): number {
   if (closet.length === 0) return 60;
@@ -45,6 +52,8 @@ export default function ClosetPage() {
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
+  const [aiTagging, setAiTagging] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<null | AiSuggestion>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,11 +93,38 @@ export default function ClosetPage() {
     fileInputRef.current?.click();
   }
 
-  function handleFileSelected(file: File) {
+  async function handleFileSelected(file: File) {
     if (!file.type.startsWith("image/")) return;
     setPendingFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setShowUploadModal(true);
+    setAiTagging(true);
+    setAiSuggestion(null);
+
+    // Convert to base64 and call AI
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(",")[1];
+      const mimeType = file.type;
+
+      try {
+        const res = await fetch("/api/tag-item", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64, mimeType }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAiSuggestion(data);
+        }
+      } catch {
+        // silently fail — user fills manually
+      } finally {
+        setAiTagging(false);
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -116,6 +152,8 @@ export default function ClosetPage() {
   function handleModalClose() {
     setShowUploadModal(false);
     setPendingFile(null);
+    setAiTagging(false);
+    setAiSuggestion(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -125,6 +163,8 @@ export default function ClosetPage() {
   function handleItemAdded() {
     setShowUploadModal(false);
     setPendingFile(null);
+    setAiTagging(false);
+    setAiSuggestion(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
@@ -174,10 +214,7 @@ export default function ClosetPage() {
         </div>
 
         {/* Filter Bar */}
-        <div
-          className="flex gap-2 mb-6 overflow-x-auto"
-          style={{ flexWrap: "nowrap", WebkitOverflowScrolling: "touch", paddingBottom: "4px" }}
-        >
+        <div className="flex flex-wrap gap-2 mb-6">
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -192,8 +229,6 @@ export default function ClosetPage() {
                 cursor: "pointer",
                 transition: "all 0.15s",
                 fontFamily: "Georgia, serif",
-                flexShrink: 0,
-                whiteSpace: "nowrap",
               }}
             >
               {f}
@@ -207,7 +242,7 @@ export default function ClosetPage() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="flex flex-col items-center justify-center gap-2 mb-8 rounded-2xl py-5 md:py-8 px-4 text-center"
+          className="flex flex-col items-center justify-center gap-2 mb-8 rounded-2xl py-8 px-4 text-center"
           style={{
             border: `2px dashed ${dragOver ? "var(--accent)" : "var(--line)"}`,
             background: dragOver ? "var(--accent-soft)" : "var(--paper)",
@@ -329,6 +364,8 @@ export default function ClosetPage() {
         <UploadModal
           file={pendingFile}
           previewUrl={previewUrl}
+          aiTagging={aiTagging}
+          aiSuggestion={aiSuggestion}
           onAdd={(data) => {
             addClosetItem(data);
             handleItemAdded();
@@ -656,18 +693,63 @@ function ItemDetailPanel({
 function UploadModal({
   file,
   previewUrl,
+  aiTagging,
+  aiSuggestion,
   onAdd,
   onCancel,
 }: {
   file: File;
   previewUrl: string;
+  aiTagging: boolean;
+  aiSuggestion: null | AiSuggestion;
   onAdd: (data: Omit<ClosetItem, "id" | "addedAt">) => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState(file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
+  const defaultName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+  const [name, setName] = useState(defaultName);
   const [category, setCategory] = useState("Tops");
   const [tagsRaw, setTagsRaw] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
+
+  // Hidden AI metadata state
+  const [aiMeta, setAiMeta] = useState<{
+    color: string;
+    fabric: string;
+    silhouette: string;
+    eraInfluence: string;
+    garmentType: string;
+  } | null>(null);
+
+  // Track which fields the user has manually edited
+  const nameEditedRef = useRef(false);
+  const categoryEditedRef = useRef(false);
+  const tagsEditedRef = useRef(false);
+
+  // Pre-fill fields when AI suggestion arrives, if fields are still at defaults
+  useEffect(() => {
+    if (!aiSuggestion) return;
+
+    const willFillName = !nameEditedRef.current;
+    const willFillCategory = !categoryEditedRef.current && CATEGORIES.includes(aiSuggestion.category);
+    const willFillTags = !tagsEditedRef.current && Array.isArray(aiSuggestion.tags) && aiSuggestion.tags.length > 0;
+
+    if (willFillName) setName(aiSuggestion.name);
+    if (willFillCategory) setCategory(aiSuggestion.category);
+    if (willFillTags) setTagsRaw(aiSuggestion.tags.join(", "));
+
+    setAiMeta({
+      color: aiSuggestion.color || "",
+      fabric: aiSuggestion.fabric || "",
+      silhouette: aiSuggestion.silhouette || "",
+      eraInfluence: aiSuggestion.eraInfluence || "",
+      garmentType: aiSuggestion.garmentType || "",
+    });
+
+    if (willFillName || willFillCategory || willFillTags) {
+      setSuggestionApplied(true);
+    }
+  }, [aiSuggestion]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -696,6 +778,11 @@ function UploadModal({
       badge: "Keep",
       badgeColor: "var(--sage)",
       worn: 0,
+      // AI metadata fields
+      garmentType: aiMeta?.garmentType || undefined,
+      silhouette: aiMeta?.silhouette || undefined,
+      fabric: aiMeta?.fabric || undefined,
+      eraInfluence: aiMeta?.eraInfluence || undefined,
     });
   }
 
@@ -749,7 +836,7 @@ function UploadModal({
             height: 200,
             borderRadius: 12,
             overflow: "hidden",
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
             background: "var(--accent-soft)",
           }}
         >
@@ -761,21 +848,41 @@ function UploadModal({
           />
         </div>
 
-        {/* AI tagging note */}
-        <div
-          style={{
-            background: "var(--accent-soft)",
-            border: "1px solid var(--line)",
-            borderRadius: 10,
-            padding: "0.75rem 1rem",
-            marginBottom: "1.25rem",
-            fontSize: "0.8rem",
-            color: "var(--accent)",
-            lineHeight: 1.5,
-          }}
-        >
-          <strong>AI Tagging:</strong> In the full version, AI will automatically identify and label your garment. For now, add details manually.
-        </div>
+        {/* AI status bar */}
+        {aiTagging && (
+          <div
+            style={{
+              marginBottom: "1.25rem",
+              fontSize: "0.82rem",
+              color: "var(--accent)",
+              fontStyle: "italic",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+            }}
+          >
+            <span style={{ animation: "aiPulse 1.5s ease-in-out infinite" }}>✦</span>
+            AI is analyzing your garment...
+            <style>{`@keyframes aiPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+          </div>
+        )}
+        {!aiTagging && aiSuggestion && (
+          <div
+            style={{
+              marginBottom: "1.25rem",
+              fontSize: "0.82rem",
+              color: "var(--sage)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <span>✦</span>
+            <span>AI identified this as:</span>
+            <strong>{aiSuggestion.name}</strong>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Name */}
@@ -786,7 +893,7 @@ function UploadModal({
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); nameEditedRef.current = true; setSuggestionApplied(false); }}
               required
               placeholder="e.g. Ivory Linen Blouse"
               style={{
@@ -811,7 +918,7 @@ function UploadModal({
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => { setCategory(e.target.value); categoryEditedRef.current = true; }}
               style={{
                 width: "100%",
                 padding: "0.6rem 0.9rem",
@@ -840,7 +947,7 @@ function UploadModal({
             <input
               type="text"
               value={tagsRaw}
-              onChange={(e) => setTagsRaw(e.target.value)}
+              onChange={(e) => { setTagsRaw(e.target.value); tagsEditedRef.current = true; }}
               placeholder="e.g. romantic, vintage, feminine"
               style={{
                 width: "100%",
@@ -856,6 +963,13 @@ function UploadModal({
               }}
             />
           </div>
+
+          {/* AI suggestion note */}
+          {suggestionApplied && (
+            <p style={{ fontSize: "0.75rem", color: "var(--muted)", fontStyle: "italic", margin: "-0.5rem 0 0" }}>
+              AI suggestion — edit freely
+            </p>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 mt-2">
