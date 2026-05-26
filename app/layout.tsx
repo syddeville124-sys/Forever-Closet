@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import BottomNav from "@/components/BottomNav";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
@@ -18,9 +19,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col antialiased">
         <StoreProvider>
           <Nav />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
+          <BottomNav />
           <footer
-            className="border-t py-6 text-center text-sm"
+            className="hidden md:block border-t py-6 text-center text-sm"
             style={{ borderColor: "var(--line)", color: "var(--muted)" }}
           >
             © 2026 Forever Closet AI · Build less. Wear more. Shop intentionally.

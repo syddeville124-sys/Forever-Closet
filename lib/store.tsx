@@ -45,6 +45,9 @@ export interface UserProfile {
   goalMode: "refine" | "discover" | "both" | null;
   measurementMode: "easy" | "advanced" | null;
   standardSize: string;
+  topSizes: string[];
+  bottomSizes: string[];
+  dressSizes: string[];
   shoeSize: string;
   braSize: string;
   fitPreference: string;
@@ -59,6 +62,7 @@ export interface UserProfile {
   styleKeywords: string[];
   lifestyle: string[];
   sustainability: string[];
+  sensoryPrefs: string[];
   pinterestUrl: string;
   onboardingComplete: boolean;
 }
@@ -95,10 +99,11 @@ const DEMO_CLOSET: ClosetItem[] = [
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
-  goalMode: null, measurementMode: null, standardSize: "", shoeSize: "", braSize: "",
-  fitPreference: "", bust: "", waist: "", hips: "", inseam: "", shoulderWidth: "",
-  torsoLength: "", armLength: "", colorPalette: [], styleKeywords: [], lifestyle: [],
-  sustainability: [], pinterestUrl: "", onboardingComplete: false,
+  goalMode: null, measurementMode: null, standardSize: "", topSizes: [], bottomSizes: [],
+  dressSizes: [], shoeSize: "", braSize: "", fitPreference: "", bust: "", waist: "", hips: "",
+  inseam: "", shoulderWidth: "", torsoLength: "", armLength: "", colorPalette: [],
+  styleKeywords: [], lifestyle: [], sustainability: [], sensoryPrefs: [], pinterestUrl: "",
+  onboardingComplete: false,
 };
 
 const DEFAULT_STATE: StoreState = {

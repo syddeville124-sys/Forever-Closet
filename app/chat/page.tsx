@@ -557,8 +557,9 @@ export default function ChatPage() {
     <div
       style={{
         background: "var(--bg)",
-        minHeight: "calc(100vh - 120px)",
+        height: "calc(100vh - 56px)",
         display: "flex",
+        overflow: "hidden",
       }}
     >
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
@@ -775,6 +776,7 @@ export default function ChatPage() {
 
         {/* Input bar */}
         <div
+          className="pb-4 md:pb-0"
           style={{
             padding: "0.85rem 1.25rem",
             borderTop: "1px solid var(--line)",
