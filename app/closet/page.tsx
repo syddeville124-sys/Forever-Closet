@@ -174,7 +174,10 @@ export default function ClosetPage() {
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div
+          className="flex gap-2 mb-6 overflow-x-auto"
+          style={{ flexWrap: "nowrap", WebkitOverflowScrolling: "touch", paddingBottom: "4px" }}
+        >
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -189,6 +192,8 @@ export default function ClosetPage() {
                 cursor: "pointer",
                 transition: "all 0.15s",
                 fontFamily: "Georgia, serif",
+                flexShrink: 0,
+                whiteSpace: "nowrap",
               }}
             >
               {f}
@@ -202,7 +207,7 @@ export default function ClosetPage() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="flex flex-col items-center justify-center gap-2 mb-8 rounded-2xl py-8 px-4 text-center"
+          className="flex flex-col items-center justify-center gap-2 mb-8 rounded-2xl py-5 md:py-8 px-4 text-center"
           style={{
             border: `2px dashed ${dragOver ? "var(--accent)" : "var(--line)"}`,
             background: dragOver ? "var(--accent-soft)" : "var(--paper)",
