@@ -13,8 +13,10 @@ type MeasurementsMode = "easy" | "advanced";
 interface StyleAnswers {
   goal: GoalChoice;
   measurementMode: MeasurementsMode;
-  // Step 1 – Easy Mode
-  clothingSize: string;
+  // Step 1 – Easy Mode (multi-select sizes)
+  topSizes: string[];
+  bottomSizes: string[];
+  dressSizes: string[];
   shoeSize: string;
   braCupSize: string;
   fitPreference: string;
@@ -33,6 +35,7 @@ interface StyleAnswers {
   styleKeywords: string[];
   lifestyle: string[];
   sustainability: string[];
+  sensoryPrefs: string[];
   // Step 3 – Inspiration
   pinterestUrl: string;
 }
@@ -45,25 +48,59 @@ const STEP_TITLES = [
   "Your Style DNA",
 ];
 
-const CLOTHING_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "1X", "2X", "3X+"];
+// ── Size data ──────────────────────────────────────────────────────────────
+
+const TOP_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "1X", "2X", "3X+"];
+const BOTTOM_SIZES_NUM = ["23", "24", "25", "26", "27", "28", "29", "30", "32", "34", "36", "38"];
+const BOTTOM_SIZES_ALPHA = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "1X", "2X", "3X+"];
+const DRESS_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "1X", "2X", "3X+"];
 const FIT_PREFS = ["Fitted", "Relaxed", "Oversized", "Body-skimming"];
+
+// ── Color palettes ─────────────────────────────────────────────────────────
+
 const COLOR_PALETTES = [
-  "Earthy neutrals",
-  "Jewel tones",
-  "Monochrome black",
-  "Soft pastels",
-  "Bold brights",
+  "Earthy neutrals (beige, camel, rust, olive)",
+  "Warm jewel tones (burgundy, plum, forest, rust)",
+  "Cool jewel tones (sapphire, emerald, amethyst)",
+  "Monochrome / all black",
+  "Soft pastels (blush, sage, dusty mauve, lavender)",
+  "Bold brights (cobalt, tangerine, fuchsia)",
+  "Rich darks (chocolate, charcoal, midnight)",
+  "White / cream / ivory",
+  "Muted / greige / dusty tones",
 ];
-const STYLE_KEYWORDS = [
-  "Romantic",
-  "Vintage",
-  "Bohemian",
-  "Structured",
-  "Gothic",
-  "Cottagecore",
-  "Minimalist",
-  "Eclectic",
+
+// ── Style keyword groups ───────────────────────────────────────────────────
+
+const STYLE_KEYWORD_GROUPS: { group: string; keywords: string[] }[] = [
+  {
+    group: "Romantic & Soft",
+    keywords: ["Romantic", "Cottagecore", "Fairycore", "Regencycore", "Prairie/Pioneer", "Balletcore", "Ethereal", "Soft Glam"],
+  },
+  {
+    group: "Dark & Dramatic",
+    keywords: ["Gothic/Dark Romantic", "Dark Academia", "Witchy", "Grunge/Alternative", "Edgy Minimal"],
+  },
+  {
+    group: "Vintage & Retro",
+    keywords: ["Vintage (general)", "70s Retro", "90s Nostalgia", "Y2K Revival", "Art Deco", "Edwardian Revival"],
+  },
+  {
+    group: "Natural & Earthy",
+    keywords: ["Bohemian", "Earthy/Natural", "Forest Fairy", "Coastal", "Western/Cowgirl", "Outdoorsy"],
+  },
+  {
+    group: "Modern & Elevated",
+    keywords: ["Minimalist", "Quiet Luxury", "Old Money", "Clean Girl", "French Girl/Parisian", "Preppy Classic", "Structured/Tailored"],
+  },
+  {
+    group: "Creative & Eclectic",
+    keywords: ["Eclectic/Maximalist", "Streetwear", "Art Hoe", "Grandmillennial", "Japanese Minimal", "Whimsical"],
+  },
 ];
+
+// ── Lifestyle / sustainability / sensory options ───────────────────────────
+
 const LIFESTYLE_OPTIONS = [
   "Work / office",
   "Creative studio",
@@ -72,11 +109,21 @@ const LIFESTYLE_OPTIONS = [
   "Casual everyday",
   "Travel",
 ];
+
 const SUSTAINABILITY_OPTIONS = [
   "Secondhand / vintage",
   "Natural fabrics",
   "Buy less / buy better",
   "Independent designers",
+];
+
+const SENSORY_PREFS = [
+  "I avoid scratchy or rough textures",
+  "I prefer loose/non-restrictive fits",
+  "I need easy-care / machine washable pieces",
+  "Layers make me feel comfortable and styled",
+  "I run warm / prefer lighter fabrics",
+  "I run cold / need cozy, warm options",
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -109,33 +156,53 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      className="text-xs uppercase tracking-wider mb-2 font-sans"
+      style={{ color: "var(--muted)", letterSpacing: "0.12em", opacity: 0.8 }}
+    >
+      {children}
+    </p>
+  );
+}
+
 function TextInput({
   value,
   onChange,
   placeholder,
   type = "text",
+  note,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  note?: string;
 }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-shadow"
-      style={{
-        background: "var(--paper)",
-        border: "1.5px solid var(--line)",
-        color: "var(--ink)",
-        fontFamily: "Georgia, serif",
-      }}
-      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--line)")}
-    />
+    <div>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-shadow"
+        style={{
+          background: "var(--paper)",
+          border: "1.5px solid var(--line)",
+          color: "var(--ink)",
+          fontFamily: "Georgia, serif",
+        }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--line)")}
+      />
+      {note && (
+        <p className="text-xs mt-1.5" style={{ color: "var(--muted)" }}>
+          {note}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -185,26 +252,58 @@ function Pill({
   active,
   onClick,
   children,
+  small,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  small?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="px-4 py-2 rounded-full text-sm transition-colors"
+      className="rounded-full transition-colors"
       style={{
+        padding: small ? "3px 10px" : "6px 14px",
+        fontSize: small ? "0.72rem" : "0.82rem",
         background: active ? "var(--accent)" : "var(--paper)",
         color: active ? "white" : "var(--muted)",
         border: `1.5px solid ${active ? "var(--accent)" : "var(--line)"}`,
         fontFamily: "Georgia, serif",
         cursor: "pointer",
+        lineHeight: "1.4",
       }}
     >
       {children}
     </button>
+  );
+}
+
+// ── Multi-select size section ──────────────────────────────────────────────
+
+function SizeSection({
+  label,
+  sizes,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  sizes: string[];
+  selected: string[];
+  onToggle: (sz: string) => void;
+}) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex flex-wrap gap-1.5">
+        {sizes.map((sz) => (
+          <Pill key={sz} active={selected.includes(sz)} onClick={() => onToggle(sz)}>
+            {sz}
+          </Pill>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -301,11 +400,13 @@ function StepGoal({
 function StepMeasurements({
   answers,
   setField,
+  toggleSizeArray,
   measurementMode,
   setMeasurementMode,
 }: {
   answers: StyleAnswers;
   setField: (k: keyof StyleAnswers, v: string) => void;
+  toggleSizeArray: (k: "topSizes" | "bottomSizes" | "dressSizes", val: string) => void;
   measurementMode: MeasurementsMode;
   setMeasurementMode: (m: MeasurementsMode) => void;
 }) {
@@ -346,34 +447,72 @@ function StepMeasurements({
         ))}
       </div>
 
-      {/* Easy Mode fields */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-7">
+        {/* Tops / Jackets */}
+        <SizeSection
+          label="Tops / Jackets"
+          sizes={TOP_SIZES}
+          selected={answers.topSizes}
+          onToggle={(sz) => toggleSizeArray("topSizes", sz)}
+        />
+
+        {/* Bottoms / Pants */}
         <div>
-          <FieldLabel>Clothing Size</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {CLOTHING_SIZES.map((sz) => (
-              <Pill
-                key={sz}
-                active={answers.clothingSize === sz}
-                onClick={() => setField("clothingSize", answers.clothingSize === sz ? "" : sz)}
-              >
-                {sz}
-              </Pill>
-            ))}
+          <FieldLabel>Bottoms / Pants</FieldLabel>
+          <div className="flex flex-col gap-3">
+            <div>
+              <GroupLabel>Numeric (waist inches)</GroupLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {BOTTOM_SIZES_NUM.map((sz) => (
+                  <Pill
+                    key={sz}
+                    active={answers.bottomSizes.includes(sz)}
+                    onClick={() => toggleSizeArray("bottomSizes", sz)}
+                  >
+                    {sz}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+            <div>
+              <GroupLabel>Alpha / plus</GroupLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {BOTTOM_SIZES_ALPHA.map((sz) => (
+                  <Pill
+                    key={`alpha-${sz}`}
+                    active={answers.bottomSizes.includes(sz)}
+                    onClick={() => toggleSizeArray("bottomSizes", sz)}
+                  >
+                    {sz}
+                  </Pill>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Dresses / One-pieces */}
+        <SizeSection
+          label="Dresses / One-pieces"
+          sizes={DRESS_SIZES}
+          selected={answers.dressSizes}
+          onToggle={(sz) => toggleSizeArray("dressSizes", sz)}
+        />
+
+        {/* Shoe size */}
         <div>
-          <FieldLabel>Shoe Size (US)</FieldLabel>
+          <FieldLabel>Shoe Size</FieldLabel>
           <div className="max-w-xs">
             <TextInput
               value={answers.shoeSize}
               onChange={(v) => setField("shoeSize", v)}
-              placeholder="e.g. 8, 8.5, 9W"
+              placeholder="e.g. 8, 38, 6 UK"
+              note="EU / US / UK — enter whatever you use"
             />
           </div>
         </div>
 
+        {/* Bra size */}
         <div>
           <FieldLabel>
             Bra / Chest Size{" "}
@@ -390,6 +529,7 @@ function StepMeasurements({
           </div>
         </div>
 
+        {/* Fit preference */}
         <div>
           <FieldLabel>Fit Preference</FieldLabel>
           <div className="flex flex-wrap gap-2">
@@ -524,21 +664,29 @@ function StepStyleQuiz({
           </div>
         </div>
 
-        {/* Style Keywords */}
+        {/* Style Keywords — grouped */}
         <div>
           <FieldLabel>Style Keywords</FieldLabel>
-          <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
+          <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>
             Select all that speak to you
           </p>
-          <div className="flex flex-wrap gap-2">
-            {STYLE_KEYWORDS.map((kw) => (
-              <Pill
-                key={kw}
-                active={answers.styleKeywords.includes(kw)}
-                onClick={() => toggleArray("styleKeywords", kw)}
-              >
-                {kw}
-              </Pill>
+          <div className="flex flex-col gap-5">
+            {STYLE_KEYWORD_GROUPS.map(({ group, keywords }) => (
+              <div key={group}>
+                <GroupLabel>{group}</GroupLabel>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.map((kw) => (
+                    <Pill
+                      key={kw}
+                      small
+                      active={answers.styleKeywords.includes(kw)}
+                      onClick={() => toggleArray("styleKeywords", kw)}
+                    >
+                      {kw}
+                    </Pill>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -571,6 +719,24 @@ function StepStyleQuiz({
                 label={sp}
                 checked={answers.sustainability.includes(sp)}
                 onChange={() => toggleArray("sustainability", sp)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Sensory / Comfort Preferences */}
+        <div>
+          <FieldLabel>Comfort &amp; Sensory Preferences</FieldLabel>
+          <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
+            Helps us avoid recommending pieces that won&apos;t work for your body and lifestyle.
+          </p>
+          <div className="flex flex-col gap-3">
+            {SENSORY_PREFS.map((sp) => (
+              <Checkbox
+                key={sp}
+                label={sp}
+                checked={answers.sensoryPrefs.includes(sp)}
+                onChange={() => toggleArray("sensoryPrefs", sp)}
               />
             ))}
           </div>
@@ -706,7 +872,9 @@ function StepComplete({
 
   const summaryRows = [
     { label: "Goal", value: goalLabel },
-    { label: "Clothing Size", value: answers.clothingSize || "—" },
+    { label: "Tops / Jackets", value: answers.topSizes.length ? answers.topSizes.join(", ") : "—" },
+    { label: "Bottoms / Pants", value: answers.bottomSizes.length ? answers.bottomSizes.join(", ") : "—" },
+    { label: "Dresses", value: answers.dressSizes.length ? answers.dressSizes.join(", ") : "—" },
     { label: "Fit Preference", value: answers.fitPreference || "—" },
     {
       label: "Color Palettes",
@@ -723,6 +891,10 @@ function StepComplete({
     {
       label: "Sustainability",
       value: answers.sustainability.length ? answers.sustainability.join(", ") : "—",
+    },
+    {
+      label: "Sensory Prefs",
+      value: answers.sensoryPrefs.length ? answers.sensoryPrefs.join(", ") : "—",
     },
     {
       label: "Pinterest",
@@ -864,7 +1036,9 @@ export default function OnboardingPage() {
   const [answers, setAnswers] = useState<StyleAnswers>({
     goal: null,
     measurementMode: "easy",
-    clothingSize: "",
+    topSizes: [],
+    bottomSizes: [],
+    dressSizes: [],
     shoeSize: "",
     braCupSize: "",
     fitPreference: "",
@@ -881,6 +1055,7 @@ export default function OnboardingPage() {
     styleKeywords: [],
     lifestyle: [],
     sustainability: [],
+    sensoryPrefs: [],
     pinterestUrl: "",
   });
 
@@ -899,11 +1074,21 @@ export default function OnboardingPage() {
     }));
   }
 
+  function toggleSizeArray(k: "topSizes" | "bottomSizes" | "dressSizes", val: string) {
+    setAnswers((prev) => ({
+      ...prev,
+      [k]: toggle(prev[k], val),
+    }));
+  }
+
   function handleComplete() {
     updateProfile({
       goalMode: answers.goal,
       measurementMode: answers.measurementMode,
-      standardSize: answers.clothingSize,
+      standardSize: answers.topSizes[0] ?? "",
+      topSizes: answers.topSizes,
+      bottomSizes: answers.bottomSizes,
+      dressSizes: answers.dressSizes,
       shoeSize: answers.shoeSize,
       braSize: answers.braCupSize,
       fitPreference: answers.fitPreference,
@@ -918,6 +1103,7 @@ export default function OnboardingPage() {
       styleKeywords: answers.styleKeywords,
       lifestyle: answers.lifestyle,
       sustainability: answers.sustainability,
+      sensoryPrefs: answers.sensoryPrefs,
       pinterestUrl: answers.pinterestUrl,
       onboardingComplete: true,
     });
@@ -978,6 +1164,7 @@ export default function OnboardingPage() {
           <StepMeasurements
             answers={answers}
             setField={setField}
+            toggleSizeArray={toggleSizeArray}
             measurementMode={answers.measurementMode}
             setMeasurementMode={setMeasurementMode}
           />
