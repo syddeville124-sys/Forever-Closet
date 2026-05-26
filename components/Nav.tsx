@@ -11,6 +11,7 @@ const links = [
   { href: "/seed-closet", label: "Seed Closet" },
   { href: "/shopping-buddy", label: "Shopping Buddy" },
   { href: "/chat", label: "AI Stylist" },
+  { href: "/profile", label: "Style DNA" },
   { href: "/pricing", label: "Pricing" },
 ];
 

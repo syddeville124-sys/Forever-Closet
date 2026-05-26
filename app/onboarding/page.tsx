@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -10,6 +12,7 @@ type MeasurementsMode = "easy" | "advanced";
 
 interface StyleAnswers {
   goal: GoalChoice;
+  measurementMode: MeasurementsMode;
   // Step 1 – Easy Mode
   clothingSize: string;
   shoeSize: string;
@@ -298,12 +301,14 @@ function StepGoal({
 function StepMeasurements({
   answers,
   setField,
+  measurementMode,
+  setMeasurementMode,
 }: {
   answers: StyleAnswers;
   setField: (k: keyof StyleAnswers, v: string) => void;
+  measurementMode: MeasurementsMode;
+  setMeasurementMode: (m: MeasurementsMode) => void;
 }) {
-  const [mode, setMode] = useState<MeasurementsMode>("easy");
-
   return (
     <div>
       <SectionLabel>Step 2 of 5</SectionLabel>
@@ -326,11 +331,11 @@ function StepMeasurements({
           <button
             key={m}
             type="button"
-            onClick={() => setMode(m)}
+            onClick={() => setMeasurementMode(m)}
             className="px-5 py-2 rounded-full text-sm capitalize transition-all"
             style={{
-              background: mode === m ? "var(--accent)" : "transparent",
-              color: mode === m ? "white" : "var(--muted)",
+              background: measurementMode === m ? "var(--accent)" : "transparent",
+              color: measurementMode === m ? "white" : "var(--muted)",
               fontFamily: "Georgia, serif",
               cursor: "pointer",
               border: "none",
@@ -403,7 +408,7 @@ function StepMeasurements({
         </div>
 
         {/* Advanced Mode extras */}
-        {mode === "advanced" && (
+        {measurementMode === "advanced" && (
           <>
             <div
               className="rounded-xl px-5 py-4 mt-2"
@@ -683,7 +688,13 @@ function StepInspiration({
 
 // ── Step 4: Complete ───────────────────────────────────────────────────────
 
-function StepComplete({ answers }: { answers: StyleAnswers }) {
+function StepComplete({
+  answers,
+  onComplete,
+}: {
+  answers: StyleAnswers;
+  onComplete: () => void;
+}) {
   const goalLabel =
     answers.goal === "refine"
       ? "Refine my style"
@@ -825,13 +836,14 @@ function StepComplete({ answers }: { answers: StyleAnswers }) {
         </div>
       </div>
 
-      <Link
-        href="/closet"
-        className="inline-block w-full text-center px-8 py-4 rounded-full text-white text-base font-medium transition-opacity hover:opacity-90"
-        style={{ background: "var(--accent)", fontFamily: "Georgia, serif" }}
+      <button
+        type="button"
+        onClick={onComplete}
+        className="w-full text-center px-8 py-4 rounded-full text-white text-base font-medium transition-opacity hover:opacity-90"
+        style={{ background: "var(--accent)", fontFamily: "Georgia, serif", border: "none", cursor: "pointer" }}
       >
         Go to My Closet →
-      </Link>
+      </button>
 
       <p className="text-xs text-center mt-4" style={{ color: "var(--muted)" }}>
         You can update your Style DNA at any time from your profile settings.
@@ -843,11 +855,15 @@ function StepComplete({ answers }: { answers: StyleAnswers }) {
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
+  const router = useRouter();
+  const { updateProfile } = useStore();
+
   const [step, setStep] = useState(0);
   const TOTAL_STEPS = 5;
 
   const [answers, setAnswers] = useState<StyleAnswers>({
     goal: null,
+    measurementMode: "easy",
     clothingSize: "",
     shoeSize: "",
     braCupSize: "",
@@ -872,11 +888,40 @@ export default function OnboardingPage() {
     setAnswers((prev) => ({ ...prev, [k]: v }));
   }
 
+  function setMeasurementMode(m: MeasurementsMode) {
+    setAnswers((prev) => ({ ...prev, measurementMode: m }));
+  }
+
   function toggleArray(k: keyof StyleAnswers, val: string) {
     setAnswers((prev) => ({
       ...prev,
       [k]: toggle(prev[k] as string[], val),
     }));
+  }
+
+  function handleComplete() {
+    updateProfile({
+      goalMode: answers.goal,
+      measurementMode: answers.measurementMode,
+      standardSize: answers.clothingSize,
+      shoeSize: answers.shoeSize,
+      braSize: answers.braCupSize,
+      fitPreference: answers.fitPreference,
+      bust: answers.bust,
+      waist: answers.waist,
+      hips: answers.hips,
+      inseam: answers.inseam,
+      shoulderWidth: answers.shoulderWidth,
+      torsoLength: answers.torsoLength,
+      armLength: answers.armLength,
+      colorPalette: answers.colorPalettes,
+      styleKeywords: answers.styleKeywords,
+      lifestyle: answers.lifestyle,
+      sustainability: answers.sustainability,
+      pinterestUrl: answers.pinterestUrl,
+      onboardingComplete: true,
+    });
+    router.push("/closet");
   }
 
   const progressPct = Math.round((step / (TOTAL_STEPS - 1)) * 100);
@@ -930,7 +975,12 @@ export default function OnboardingPage() {
           <StepGoal goal={answers.goal} setGoal={(g) => setField("goal", g as string)} />
         )}
         {step === 1 && (
-          <StepMeasurements answers={answers} setField={setField} />
+          <StepMeasurements
+            answers={answers}
+            setField={setField}
+            measurementMode={answers.measurementMode}
+            setMeasurementMode={setMeasurementMode}
+          />
         )}
         {step === 2 && (
           <StepStyleQuiz answers={answers} toggleArray={toggleArray} />
@@ -938,7 +988,9 @@ export default function OnboardingPage() {
         {step === 3 && (
           <StepInspiration answers={answers} setField={setField} />
         )}
-        {step === 4 && <StepComplete answers={answers} />}
+        {step === 4 && (
+          <StepComplete answers={answers} onComplete={handleComplete} />
+        )}
 
         {/* ── Navigation ── */}
         {step < 4 && (
