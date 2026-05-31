@@ -31,6 +31,7 @@ export interface ClosetItem {
   badgeColor: string;
   worn: number;
   addedAt: number;        // timestamp
+  colorName?: string;      // human-readable color name from AI (e.g. "Dusty rose")
   garmentType?: string;
   silhouette?: string;
   fabric?: string;

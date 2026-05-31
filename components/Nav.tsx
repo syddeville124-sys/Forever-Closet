@@ -23,8 +23,11 @@ export default function Nav() {
       className="sticky top-0 z-50"
     >
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
-        <Link href="/" className="font-bold text-lg tracking-tight" style={{ color: "var(--accent)" }}>
-          Forever Closet
+        <Link href="/" className="font-bold text-lg tracking-tight" style={{ color: "var(--accent)", display: "flex", alignItems: "baseline", gap: "0.35rem" }}>
+          Woven
+          <span style={{ fontWeight: 400, fontSize: "0.72rem", color: "var(--muted)", letterSpacing: "0.05em" }}>
+            Forever Closet
+          </span>
         </Link>
 
         {/* Desktop nav links */}

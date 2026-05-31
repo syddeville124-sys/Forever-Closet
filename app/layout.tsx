@@ -5,8 +5,8 @@ import BottomNav from "@/components/BottomNav";
 import { StoreProvider } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "Forever Closet AI",
-  description: "A sustainable wardrobe intelligence platform",
+  title: "Woven · Forever Closet",
+  description: "Your personal AI stylist. Know your wardrobe, wear more of what you own, shop with intention.",
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
             className="hidden md:block border-t py-6 text-center text-sm"
             style={{ borderColor: "var(--line)", color: "var(--muted)" }}
           >
-            © 2026 Forever Closet AI · Build less. Wear more. Shop intentionally.
+            © 2026 Woven · Forever Closet · Build less. Wear more. Shop intentionally.
           </footer>
         </StoreProvider>
       </body>

@@ -22,7 +22,8 @@ const BADGE_OPTIONS = [
 type AiSuggestion = {
   name: string;
   category: string;
-  color: string;
+  color: string;      // hex code
+  colorName: string;  // human-readable
   fabric: string;
   silhouette: string;
   tags: string[];
@@ -48,6 +49,7 @@ export default function ClosetPage() {
   const [selectedItem, setSelectedItem] = useState<ClosetItem | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingQueue, setPendingQueue] = useState<File[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -128,8 +130,18 @@ export default function ClosetPage() {
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelected(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const fileArr = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (fileArr.length === 0) return;
+    if (fileArr.length === 1) {
+      handleFileSelected(fileArr[0]);
+    } else {
+      // Queue multiple files — open first, queue the rest
+      const [first, ...rest] = fileArr;
+      setPendingQueue(rest);
+      handleFileSelected(first);
+    }
     e.target.value = "";
   }
 
@@ -145,13 +157,21 @@ export default function ClosetPage() {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelected(file);
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) return;
+    if (files.length === 1) {
+      handleFileSelected(files[0]);
+    } else {
+      const [first, ...rest] = files;
+      setPendingQueue(rest);
+      handleFileSelected(first);
+    }
   }
 
   function handleModalClose() {
     setShowUploadModal(false);
     setPendingFile(null);
+    setPendingQueue([]);
     setAiTagging(false);
     setAiSuggestion(null);
     if (previewUrl) {
@@ -161,15 +181,24 @@ export default function ClosetPage() {
   }
 
   function handleItemAdded() {
-    setShowUploadModal(false);
-    setPendingFile(null);
-    setAiTagging(false);
-    setAiSuggestion(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
-    showToast("Added to your closet");
+    setAiTagging(false);
+    setAiSuggestion(null);
+    setPendingFile(null);
+
+    // If there are more files queued, open the next one
+    if (pendingQueue.length > 0) {
+      const [next, ...remaining] = pendingQueue;
+      setPendingQueue(remaining);
+      handleFileSelected(next);
+      showToast(`Added · ${remaining.length + 1} more to go`);
+    } else {
+      setShowUploadModal(false);
+      showToast("Added to your closet");
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -269,10 +298,10 @@ export default function ClosetPage() {
             </svg>
           </div>
           <p style={{ fontWeight: 600, color: "var(--ink)", fontSize: "0.95rem" }}>
-            {dragOver ? "Drop to upload" : "Upload a closet item"}
+            {dragOver ? "Drop to upload" : "Add items to your closet"}
           </p>
           <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 320 }}>
-            Drag & drop a photo here, or click to browse
+            Drag & drop up to 20 photos at once — AI will tag each one
           </p>
           <button
             onClick={(e) => { e.stopPropagation(); openFilePicker(); }}
@@ -292,11 +321,12 @@ export default function ClosetPage() {
           </button>
         </div>
 
-        {/* Hidden file input */}
+        {/* Hidden file input — multiple allows bulk upload */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           style={{ display: "none" }}
           onChange={handleInputChange}
         />
@@ -715,6 +745,7 @@ function UploadModal({
   // Hidden AI metadata state
   const [aiMeta, setAiMeta] = useState<{
     color: string;
+    colorName: string;
     fabric: string;
     silhouette: string;
     eraInfluence: string;
@@ -740,6 +771,7 @@ function UploadModal({
 
     setAiMeta({
       color: aiSuggestion.color || "",
+      colorName: aiSuggestion.colorName || aiSuggestion.color || "",
       fabric: aiSuggestion.fabric || "",
       silhouette: aiSuggestion.silhouette || "",
       eraInfluence: aiSuggestion.eraInfluence || "",
@@ -772,13 +804,13 @@ function UploadModal({
     onAdd({
       name: name.trim(),
       category,
-      color: "var(--accent-soft)",
+      color: aiMeta?.color || "var(--accent-soft)",
+      colorName: aiMeta?.colorName || undefined,
       imageDataUrl,
       tags,
       badge: "Keep",
       badgeColor: "var(--sage)",
       worn: 0,
-      // AI metadata fields
       garmentType: aiMeta?.garmentType || undefined,
       silhouette: aiMeta?.silhouette || undefined,
       fabric: aiMeta?.fabric || undefined,
@@ -874,13 +906,35 @@ function UploadModal({
               color: "var(--sage)",
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
+              gap: "0.5rem",
               flexWrap: "wrap",
+              padding: "0.6rem 0.85rem",
+              background: "var(--accent-soft)",
+              borderRadius: 10,
+              border: "1px solid var(--line)",
             }}
           >
             <span>✦</span>
-            <span>AI identified this as:</span>
-            <strong>{aiSuggestion.name}</strong>
+            <span style={{ flex: 1 }}>
+              <strong>{aiSuggestion.name}</strong>
+              {aiSuggestion.colorName && (
+                <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {aiSuggestion.colorName}</span>
+              )}
+            </span>
+            {aiSuggestion.color && aiSuggestion.color.startsWith("#") && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  background: aiSuggestion.color,
+                  border: "2px solid var(--line)",
+                  flexShrink: 0,
+                }}
+                title={aiSuggestion.colorName || aiSuggestion.color}
+              />
+            )}
           </div>
         )}
 

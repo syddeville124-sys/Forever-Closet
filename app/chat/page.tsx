@@ -17,7 +17,7 @@ const SEED_MESSAGES: Message[] = [
   {
     role: "assistant",
     content:
-      "Welcome to your Forever Closet stylist. I know your wardrobe, your style profile, and your goals. Ask me anything — what to wear today, whether to keep a piece, how to build an outfit, or whether a purchase makes sense for your closet.",
+      "Welcome to Woven. I know your wardrobe, your style profile, and your goals. Ask me anything — what to wear today, whether to keep a piece, how to build an outfit, or whether a purchase makes sense for your closet.",
   },
   {
     role: "user",
@@ -132,10 +132,12 @@ function StyleDnaCard({ styleKeywords, colorPalette }: { styleKeywords: string[]
 
 function SidebarContent({
   profile,
+  closetCount,
   onActionClick,
   onClose,
 }: {
   profile: ReturnType<typeof useStore>["profile"];
+  closetCount: number;
   onActionClick: (a: string) => void;
   onClose?: () => void;
 }) {
@@ -153,6 +155,14 @@ function SidebarContent({
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {/* Closet awareness pill */}
+      {closetCount > 0 && (
+        <div style={{ marginBottom: "0.65rem", padding: "0.45rem 0.75rem", borderRadius: 8, background: "var(--accent-soft)", border: "1px solid var(--line)", fontSize: "0.72rem", color: "var(--accent)", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 7H4C2.9 7 2 7.9 2 9v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z"/><path d="M16 7V5c0-1.1-.9-2-2-2h-4C8.9 3 8 3.9 8 5v2"/></svg>
+          Knows your {closetCount} closet items
         </div>
       )}
 
@@ -182,7 +192,7 @@ function SidebarContent({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ChatPage() {
-  const { profile } = useStore();
+  const { profile, closet } = useStore();
   const [messages, setMessages] = useState<Message[]>(SEED_MESSAGES);
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -240,7 +250,21 @@ export default function ChatPage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages, profile }),
+        body: JSON.stringify({
+          messages: nextMessages,
+          profile,
+          closet: closet.map((i) => ({
+            name: i.name,
+            category: i.category,
+            tags: i.tags,
+            badge: i.badge,
+            worn: i.worn,
+            fabric: i.fabric,
+            silhouette: i.silhouette,
+            eraInfluence: i.eraInfluence,
+            colorName: i.colorName,
+          })),
+        }),
         signal: controller.signal,
       });
 
@@ -318,12 +342,12 @@ export default function ChatPage() {
           overflowY: "auto",
           boxShadow: drawerOpen ? "4px 0 24px rgba(47,42,37,0.12)" : "none",
         }}
-        className="md:hidden"
+        className="lg:hidden"
         role="dialog"
         aria-modal="true"
         aria-label="Stylist menu"
       >
-        <SidebarContent profile={profile} onActionClick={handleQuickAction} onClose={() => setDrawerOpen(false)} />
+        <SidebarContent profile={profile} closetCount={closet.length} onActionClick={handleQuickAction} onClose={() => setDrawerOpen(false)} />
       </div>
 
       {/* ── Main layout ─────────────────────────────────────────────────────── */}
@@ -340,9 +364,9 @@ export default function ChatPage() {
         {/* ── Desktop persistent sidebar ──────────────────────────────────── */}
         <aside
           style={{ width: 240, flexShrink: 0, background: "var(--paper)", borderRight: "1px solid var(--line)", padding: "1.75rem 1.15rem", display: "flex", flexDirection: "column" }}
-          className="hidden md:flex"
+          className="hidden lg:flex"
         >
-          <SidebarContent profile={profile} onActionClick={handleQuickAction} />
+          <SidebarContent profile={profile} closetCount={closet.length} onActionClick={handleQuickAction} />
         </aside>
 
         {/* ── Chat column ─────────────────────────────────────────────────── */}
@@ -354,7 +378,7 @@ export default function ChatPage() {
             <button
               onClick={() => setDrawerOpen(true)}
               aria-label="Open stylist menu"
-              className="md:hidden"
+              className="lg:hidden"
               style={{ background: "none", border: "none", cursor: "pointer", padding: "4px 6px", borderRadius: 8, color: "var(--muted)", marginRight: "0.1rem", flexShrink: 0, WebkitTapHighlightColor: "transparent" }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -390,7 +414,7 @@ export default function ChatPage() {
           >
             <div style={{ textAlign: "center" }}>
               <span style={{ display: "inline-block", fontSize: "0.68rem", color: "var(--muted)", padding: "0.2rem 1rem", borderRadius: 999, background: "var(--paper)", border: "1px solid var(--line)", fontFamily: "Georgia, serif", letterSpacing: "0.03em" }}>
-                Your Forever Closet session
+                Woven · AI Stylist
               </span>
             </div>
 
