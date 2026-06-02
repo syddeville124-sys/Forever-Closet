@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
 
 const links = [
   { href: "/closet", label: "My Closet" },
@@ -17,6 +18,13 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut } = useStore();
+
+  async function handleSignOut() {
+    await signOut();
+    router.push("/");
+  }
 
   return (
     <nav
@@ -46,13 +54,24 @@ export default function Nav() {
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/onboarding"
-            className="ml-2 px-4 py-1.5 rounded-full text-sm text-white"
-            style={{ background: "var(--accent)" }}
-          >
-            Get Started
-          </Link>
+
+          {user ? (
+            <button
+              onClick={handleSignOut}
+              className="ml-2 px-4 py-1.5 rounded-full text-sm"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--line)", cursor: "pointer" }}
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="ml-2 px-4 py-1.5 rounded-full text-sm text-white"
+              style={{ background: "var(--accent)" }}
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </nav>
