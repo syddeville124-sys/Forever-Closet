@@ -63,8 +63,8 @@ const tabs = [
     ),
   },
   {
-    href: "/outfits",
-    label: "Outfits",
+    href: "/audit",
+    label: "Audit",
     icon: (active: boolean) => (
       <svg
         width="22"
@@ -77,7 +77,8 @@ const tabs = [
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        <path d="M12 2l2.09 6.26H21l-5.47 3.97 2.09 6.26L12 14.52l-5.62 4.07 2.09-6.26L3 8.26h6.91z" />
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
       </svg>
     ),
   },
