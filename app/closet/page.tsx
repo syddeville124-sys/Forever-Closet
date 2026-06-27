@@ -56,8 +56,10 @@ export default function ClosetPage() {
   const [toastVisible, setToastVisible] = useState(false);
   const [aiTagging, setAiTagging] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<null | AiSuggestion>(null);
+  const [sessionCount, setSessionCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Derived
@@ -188,16 +190,17 @@ export default function ClosetPage() {
     setAiTagging(false);
     setAiSuggestion(null);
     setPendingFile(null);
+    setSessionCount((n) => n + 1);
 
     // If there are more files queued, open the next one
     if (pendingQueue.length > 0) {
       const [next, ...remaining] = pendingQueue;
       setPendingQueue(remaining);
       handleFileSelected(next);
-      showToast(`Added · ${remaining.length + 1} more to go`);
+      showToast(`Saved ✓ · ${remaining.length + 1} more to go`);
     } else {
       setShowUploadModal(false);
-      showToast("Added to your closet");
+      showToast("Saved to your closet ✓");
     }
   }
 
@@ -219,6 +222,12 @@ export default function ClosetPage() {
             <Stat label="Items" value={String(closet.length)} />
             <div style={{ width: 1, height: 28, background: "var(--line)" }} />
             <Stat label="Categories" value={String(categoryCount)} />
+            {sessionCount > 0 && (
+              <>
+                <div style={{ width: 1, height: 28, background: "var(--line)" }} />
+                <Stat label="This session" value={`+${sessionCount}`} />
+              </>
+            )}
             <div style={{ width: 1, height: 28, background: "var(--line)" }} />
             <div>
               <span style={{ fontSize: "0.75rem", color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -267,61 +276,86 @@ export default function ClosetPage() {
 
         {/* Upload Zone */}
         <div
-          onClick={openFilePicker}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="flex flex-col items-center justify-center gap-2 mb-8 rounded-2xl py-8 px-4 text-center"
+          className="mb-8 rounded-2xl py-6 px-4"
           style={{
             border: `2px dashed ${dragOver ? "var(--accent)" : "var(--line)"}`,
             background: dragOver ? "var(--accent-soft)" : "var(--paper)",
-            cursor: "pointer",
             transition: "border-color 0.15s, background 0.15s",
           }}
         >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: dragOver ? "var(--accent)" : "var(--accent-soft)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "0.25rem",
-              transition: "background 0.15s",
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M10 13V4M10 4L7 7M10 4L13 7" stroke={dragOver ? "white" : "var(--accent)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M3 14v1.5A1.5 1.5 0 004.5 17h11A1.5 1.5 0 0017 15.5V14" stroke={dragOver ? "white" : "var(--accent)"} strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+          <p style={{ fontWeight: 600, color: "var(--ink)", fontSize: "0.95rem", textAlign: "center", marginBottom: "0.3rem" }}>
+            {dragOver ? "Drop photos here" : "Add items to your closet"}
+          </p>
+          <p style={{ color: "var(--muted)", fontSize: "0.8rem", textAlign: "center", marginBottom: "1rem" }}>
+            AI auto-tags name, color, fabric, and style — you just verify
+          </p>
+
+          {/* Two-button row: Camera (mobile priority) + Gallery */}
+          <div style={{ display: "flex", gap: "0.65rem" }}>
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              style={{
+                flex: 1,
+                padding: "0.75rem 0.5rem",
+                borderRadius: 12,
+                background: "var(--accent)",
+                color: "var(--paper)",
+                border: "none",
+                fontSize: "0.88rem",
+                cursor: "pointer",
+                fontFamily: "Georgia, serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.4rem",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Take Photo
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                flex: 1,
+                padding: "0.75rem 0.5rem",
+                borderRadius: 12,
+                background: "transparent",
+                color: "var(--accent)",
+                border: "1.5px solid var(--accent)",
+                fontSize: "0.88rem",
+                cursor: "pointer",
+                fontFamily: "Georgia, serif",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.4rem",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              Choose Photos
+            </button>
           </div>
-          <p style={{ fontWeight: 600, color: "var(--ink)", fontSize: "0.95rem" }}>
-            {dragOver ? "Drop to upload" : "Add items to your closet"}
-          </p>
-          <p style={{ color: "var(--muted)", fontSize: "0.82rem", maxWidth: 320 }}>
-            Drag & drop up to 20 photos at once — AI will tag each one
-          </p>
-          <button
-            onClick={(e) => { e.stopPropagation(); openFilePicker(); }}
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.5rem 1.5rem",
-              borderRadius: 999,
-              background: "var(--accent)",
-              color: "var(--paper)",
-              border: "none",
-              fontSize: "0.85rem",
-              cursor: "pointer",
-              fontFamily: "Georgia, serif",
-            }}
-          >
-            Choose Photo
-          </button>
         </div>
 
-        {/* Hidden file input — multiple allows bulk upload */}
+        {/* Hidden inputs */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          onChange={handleInputChange}
+        />
         <input
           ref={fileInputRef}
           type="file"
@@ -783,26 +817,16 @@ function UploadModal({
     }
   }, [aiSuggestion]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setSubmitting(true);
-
-    // Convert file to base64 data URL
+  async function buildItemData() {
     const imageDataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-
-    const tags = tagsRaw
-      .split(",")
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
-
-    onAdd({
-      name: name.trim(),
+    const tags = tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+    return {
+      name: name.trim() || "Unnamed item",
       category,
       color: aiMeta?.color || "var(--accent-soft)",
       colorName: aiMeta?.colorName || undefined,
@@ -815,7 +839,20 @@ function UploadModal({
       silhouette: aiMeta?.silhouette || undefined,
       fabric: aiMeta?.fabric || undefined,
       eraInfluence: aiMeta?.eraInfluence || undefined,
-    });
+    } as Omit<ClosetItem, "id" | "addedAt">;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSubmitting(true);
+    onAdd(await buildItemData());
+  }
+
+  async function handleQuickSave() {
+    if (aiTagging) return; // wait for AI before quick-save
+    setSubmitting(true);
+    onAdd(await buildItemData());
   }
 
   return (
@@ -850,7 +887,7 @@ function UploadModal({
           fontFamily: "Georgia, serif",
         }}
       >
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)" }}>Add to Closet</h2>
           <button
             onClick={onCancel}
@@ -938,7 +975,39 @@ function UploadModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Quick Save — big action for bulk sessions */}
+        {!aiTagging && aiSuggestion && !submitting && (
+          <button
+            onClick={handleQuickSave}
+            style={{
+              width: "100%",
+              padding: "0.85rem",
+              borderRadius: 12,
+              background: "var(--sage)",
+              color: "white",
+              border: "none",
+              fontSize: "1rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "Georgia, serif",
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              letterSpacing: "0.01em",
+            }}
+          >
+            ✓ Quick Save — accept AI suggestions
+          </button>
+        )}
+
+        <details style={{ marginBottom: "1rem" }}>
+          <summary style={{ fontSize: "0.78rem", color: "var(--muted)", cursor: "pointer", userSelect: "none", fontFamily: "Georgia, serif", listStyle: "none" }}>
+            ▸ Edit details manually
+          </summary>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" style={{ marginTop: "0.85rem" }}>
           {/* Name */}
           <div>
             <label style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", display: "block", marginBottom: "0.4rem" }}>
@@ -1044,7 +1113,7 @@ function UploadModal({
                 transition: "opacity 0.15s",
               }}
             >
-              {submitting ? "Adding…" : "Add to Closet"}
+              {submitting ? "Saving…" : "Save with edits"}
             </button>
             <button
               type="button"
@@ -1060,10 +1129,11 @@ function UploadModal({
                 fontFamily: "Georgia, serif",
               }}
             >
-              Cancel
+              Skip
             </button>
           </div>
         </form>
+        </details>
       </div>
     </>
   );
